@@ -57,7 +57,7 @@ movie_bias
 qplot(b_i_hat, data = movie_bias, bins = 30, color = I("black"), main = "Distribution of the Estimated Movie Bias")
 
 # the movie bias model adds the estimated bias of each movie to the mean rating of all movies from the naive mean model:
-movie_bias_model <- mu_hat + edx %>% left_join(movie_bias, by = 'movieId') %>% pull(b_i_hat)
+movie_bias_model <- edx %>% left_join(movie_bias, by = 'movieId') %>% mutate(y_hat = mu_hat + b_i_hat) %>% pull(y_hat)
 
 # RMSE of the movie bias model:
 movie_bias_rmse <- RMSE(edx$rating, movie_bias_model)
@@ -207,17 +207,17 @@ edx %>% left_join(user_bias, by = 'userId') %>% group_by(userId) %>%
 45  13063 1.6315789  19 -1.986473
 
 # USER BIAS + MOVIE BIAS MODEL ----
-# U.M_bias_model adds the estimated bias of each user to the estimated bias of each movie and the mean rating of all movies:
-U.M_bias_model <- edx %>% left_join(movie_bias, by='movieId') %>% left_join(user_bias, by='userId') %>%
+# um_bias_model adds the estimated bias of each user to the estimated bias of each movie and the mean rating of all movies:
+um_bias_model <- edx %>% left_join(movie_bias, by='movieId') %>% left_join(user_bias, by='userId') %>%
   mutate(y_hat = mu_hat + b_i_hat + b_u_hat) %>% pull(y_hat)
 
 # RMSE of the user bias + movie bias model:
-U.M_bias_rmse <- RMSE(edx$rating, U.M_bias_model)
-U.M_bias_rmse
+um_bias_rmse <- RMSE(edx$rating, um_bias_model)
+um_bias_rmse
 [1] 0.8567039
 
 # add RMSE result of user bias + movie bias model to the RMSE table to compare different models:
-rmse_results <- rmse_results %>% add_row(method = "U + M bias model", RMSE = U.M_bias_rmse)
+rmse_results <- rmse_results %>% add_row(method = "U + M bias model", RMSE = um_bias_rmse)
 rmse_results
 # A tibble: 3 x 2
   method            RMSE
@@ -227,15 +227,15 @@ rmse_results
 3 U + M bias model 0.857
 
 # TEST OF THE USER BIAS + MOVIE BIAS MODEL ON THE VALIDATION DATA SET: ----
-U.M_bias_model_test <- validation %>% left_join(movie_bias, by='movieId') %>% left_join(user_bias, by='userId') %>%
+um_bias_model_test <- validation %>% left_join(movie_bias, by='movieId') %>% left_join(user_bias, by='userId') %>%
   mutate(y_hat = mu_hat + b_i_hat + b_u_hat) %>% pull(y_hat)
 
-U.M_bias_test_rmse <- RMSE(validation$rating, U.M_bias_model_test)
-U.M_bias_test_rmse
+um_bias_test_rmse <- RMSE(validation$rating, um_bias_model_test)
+um_bias_test_rmse
 [1] 0.8653488
 
 # start a results table to compare different approaches:
-rmse_testresults <- tibble(method = "U + M bias model", RMSE = U.M_bias_test_rmse)
+rmse_testresults <- tibble(method = "U + M bias model", RMSE = um_bias_test_rmse)
 rmse_testresults
 # A tibble: 1 x 2
   method            RMSE
@@ -243,7 +243,7 @@ rmse_testresults
 1 U + M bias model 0.865
 
 # Remove large data files no longer needed (can always recalculate if needed again):
-rm(movie_bias_model, U.M_bias_model, U.M_bias_model_test)
+rm(movie_bias_model, um_bias_model, um_bias_model_test)
 
 
 # GENRE BIAS ----
@@ -287,19 +287,19 @@ qplot(b_g_hat, data = genre_bias, bins = 30, color = I("black"), main = "Distrib
 
 
 # GENRE BIAS + USER BIAS + MOVIE BIAS MODEL ----
-# G.U.M_bias_model adds the estimated biases of the corresponding genres, users, and movies to the mean rating of all movies:
-G.U.M_bias_model <- edx %>% left_join(genre_bias, by='genres') %>% 
+# gum_bias_model adds the estimated biases of the corresponding genres, users, and movies to the mean rating of all movies:
+gum_bias_model <- edx %>% left_join(genre_bias, by='genres') %>% 
                             left_join(user_bias, by='userId') %>% 
                             left_join(movie_bias, by='movieId') %>% 
-                            mutate(gum_hat = mu_hat + b_g_hat + b_u_hat + b_i_hat) %>% pull(gum_hat)
+                            mutate(y_hat = mu_hat + b_g_hat + b_u_hat + b_i_hat) %>% pull(y_hat)
 
 # RMSE of the genre bias + user bias + movie bias model:
-G.U.M_bias_rmse <- RMSE(edx$rating, G.U.M_bias_model)
-G.U.M_bias_rmse
+gum_bias_rmse <- RMSE(edx$rating, gum_bias_model)
+gum_bias_rmse
 [1] 0.8563595
 
 # add RMSE result of genre bias + user bias + movie bias model to the RMSE table to compare different models:
-rmse_results <- rmse_results %>% add_row(method = "G.U.M bias model", RMSE = G.U.M_bias_rmse)
+rmse_results <- rmse_results %>% add_row(method = "G+U+M bias model", RMSE = gum_bias_rmse)
 rmse_results
 # A tibble: 4 x 2
   method            RMSE
@@ -307,27 +307,46 @@ rmse_results
 1 naive mean model 1.06 
 2 movie bias model 0.942
 3 U + M bias model 0.857
-4 G.U.M bias model 0.856
+4 G+U+M bias model 0.856
 
 
-# TEST OF THE G.U.M BIAS MODEL ON THE VALIDATION DATA SET: ----
-G.U.M_bias_model_test <- validation %>% left_join(genre_bias, by='genres') %>% 
+rmse_results %>% knitr::kable()
+
+|method           |      RMSE|
+|:----------------|---------:|
+|naive mean model | 1.0603313|
+|movie bias model | 0.9423475|
+|U + M bias model | 0.8567039|
+|G+U+M bias model | 0.8563595|
+
+
+# TEST OF THE GENRE BIAS + USER BIAS + MOVIE BIAS MODEL ON THE VALIDATION DATA SET: ----
+gum_bias_model_test <- validation %>% left_join(genre_bias, by='genres') %>% 
                                         left_join(user_bias, by='userId') %>% 
                                         left_join(movie_bias, by='movieId') %>% 
-                                        mutate(gum_hat = mu_hat + b_g_hat + b_u_hat + b_i_hat) %>% pull(gum_hat)
+                                        mutate(y_hat = mu_hat + b_g_hat + b_u_hat + b_i_hat) %>% pull(y_hat)
 
-G.U.M_bias_rmse_test <- RMSE(validation$rating, G.U.M_bias_model_test)
-G.U.M_bias_rmse_test
+gum_bias_test_rmse <- RMSE(validation$rating, gum_bias_model_test)
+gum_bias_test_rmse
 [1] 0.8649469
 
+rmse_testresults <- rmse_testresults %>% add_row(method = "G+U+M bias model", RMSE = gum_bias_test_rmse)
+rmse_testresults
+# A tibble: 2 × 2
+  method            RMSE
+  <chr>            <dbl>
+1 U + M bias model 0.865
+2 G+U+M bias model 0.865
 
 
+rmse_testresults %>% knitr::kable()
 
+|method           |      RMSE|
+|:----------------|---------:|
+|U + M bias model | 0.8653488|
+|G+U+M bias model | 0.8649469|
+  
 
-
-
-
-
-
+rm(gum_bias_model, gum_bias_model_test)
 
 
